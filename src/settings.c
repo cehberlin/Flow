@@ -90,7 +90,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USART3_BAUD], "USART_3_BAUD");
 	global_data.param_access[PARAM_USART3_BAUD] = READ_ONLY;
 
-	global_data.param[PARAM_FOCAL_LENGTH_MM] = 16.0f;
+	global_data.param[PARAM_FOCAL_LENGTH_MM] = 6.0f;
 	strcpy(global_data.param_name[PARAM_FOCAL_LENGTH_MM], "LENS_FOCAL_LEN");
 	global_data.param_access[PARAM_FOCAL_LENGTH_MM] = READ_WRITE;
 
@@ -123,7 +123,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_GYRO_COMPENSATION_THRESHOLD], "GYRO_COMP_THR");
 	global_data.param_access[PARAM_GYRO_COMPENSATION_THRESHOLD] = READ_WRITE;
 
-	global_data.param[PARAM_SONAR_FILTERED] = 0;
+	global_data.param[PARAM_SONAR_FILTERED] = 1;
 	strcpy(global_data.param_name[PARAM_SONAR_FILTERED], "SONAR_FILTERED");
 	global_data.param_access[PARAM_SONAR_FILTERED] = READ_WRITE;
 
@@ -173,7 +173,7 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD] = READ_WRITE;
 
 //	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 100;
-	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 30; // threshold is irrelevant with this value
+	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 50; // threshold is irrelevant with this value
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD], "BFLOW_F_THLD");
 	global_data.param_access[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = READ_WRITE;
 
@@ -183,7 +183,7 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_BOTTOM_FLOW_HIST_FILTER] = READ_WRITE;
 
 //	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 0;
-	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 0;
+	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 1;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION], "BFLOW_GYRO_COM");
 	global_data.param_access[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = READ_WRITE;
 
