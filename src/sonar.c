@@ -156,19 +156,24 @@ void UART4_IRQHandler(void)
   */
 void sonar_filter()
 {
-	/* no data for long time */
-	if (dt > 0.25f) // more than 2 values lost
-	{
-		v_pred = 0;
-	}
+//	/* no data for long time */
+//	if (dt > 0.25f) // more than 2 values lost
+//	{
+//		v_pred = 0;
+//	}
+//
+//	x_pred = x_post + dt * v_pred;
+//	v_pred = v_post;
+//
+//	float x_new = sonar_mode;
+//	sonar_raw = x_new;
+//	x_post = x_pred + global_data.param[PARAM_SONAR_KALMAN_L1] * (x_new - x_pred);
+//	v_post = v_pred + global_data.param[PARAM_SONAR_KALMAN_L2] * (x_new - x_pred);
 
-	x_pred = x_post + dt * v_pred;
-	v_pred = v_post;
-
-	float x_new = sonar_mode;
-	sonar_raw = x_new;
-	x_post = x_pred + global_data.param[PARAM_SONAR_KALMAN_L1] * (x_new - x_pred);
-	v_post = v_pred + global_data.param[PARAM_SONAR_KALMAN_L2] * (x_new - x_pred);
+        // simple low pass
+        float LPF_Beta = 0.5;
+	sonar_raw = sonar_mode;
+	x_post = x_post - (LPF_Beta * (x_post - sonar_raw));
 
 }
 
