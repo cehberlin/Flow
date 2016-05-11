@@ -63,6 +63,8 @@
 #include "usbd_cdc_vcp.h"
 #include "main.h"
 
+#define NOSONAR 1
+
 /* coprocessor control register (fpu) */
 #ifndef SCB_CPACR
 #define SCB_CPACR (*((uint32_t*) (((0xE000E000UL) + 0x0D00UL) + 0x088)))
@@ -147,7 +149,9 @@ void timer_update_ms(void)
 
 	if (timer[TIMER_SONAR] == 0)
 	{
+#ifndef NOSONAR
 		sonar_trigger();
+#endif
 		timer[TIMER_SONAR] = SONAR_TIMER_COUNT;
 	}
 
@@ -287,8 +291,9 @@ int main(void)
 	float sonar_distance_filtered = 0.0f; // distance in meter
 	float sonar_distance_raw = 0.0f; // distance in meter
 	bool distance_valid = false;
+#ifndef NOSONAR
 	sonar_config();
-
+#endif
 	/* reset/start timers */
 	timer[TIMER_SONAR] = SONAR_TIMER_COUNT;
 	timer[TIMER_SYSTEM_STATE] = SYSTEM_STATE_COUNT;
@@ -305,8 +310,10 @@ int main(void)
 	float pixel_flow_y = 0.0f;
 	float pixel_flow_x_sum = 0.0f;
 	float pixel_flow_y_sum = 0.0f;
-	float velocity_x_sum = 0.0f;
-	float velocity_y_sum = 0.0f;
+	float velocity_x_meter_sum = 0.0f;
+	float velocity_y_meter_sum = 0.0f;
+        float velocity_x_sum = 0.0f;
+        float velocity_y_sum = 0.0f;
 	float velocity_x_lp = 0.0f;
 	float velocity_y_lp = 0.0f;
 	int valid_frame_count = 0;
@@ -390,13 +397,20 @@ int main(void)
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 		/* get sonar data */
+#ifndef NOSONAR
 		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
-
+#else
+		distance_valid = true;
+		sonar_distance_filtered = 0;
+		sonar_distance_raw = 0;
+#endif
 		/* reset to zero for invalid distances */
+/* This can be very dangerous for external systems
 		if (!distance_valid) {
 			sonar_distance_filtered = 0.0f;
 			sonar_distance_raw = 0.0f;
 		}
+*/
 
 		/* compute optical flow */
 		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
@@ -426,8 +440,11 @@ int main(void)
 
 				if (qual > 0)
 				{
-					velocity_x_sum += new_velocity_x;
-					velocity_y_sum += new_velocity_y;
+					velocity_x_meter_sum += new_velocity_x;
+					velocity_y_meter_sum += new_velocity_y;
+					velocity_x_sum += - flow_compx;
+					velocity_y_sum += - flow_compy;
+
 					valid_frame_count++;
 
 					uint32_t deltatime = (get_boot_time_us() - lasttime);
@@ -489,7 +506,7 @@ int main(void)
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
-				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
+				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_meter_sum/valid_frame_count, velocity_y_meter_sum/valid_frame_count, qual,
 						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
 			}
 			else
@@ -504,30 +521,38 @@ int main(void)
 
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
+				float flow_comp_x = 0.0f;
+				float flow_comp_y = 0.0f;
 
 				if(global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED])
 				{
 					flow_comp_m_x = velocity_x_lp;
 					flow_comp_m_y = velocity_y_lp;
+					flow_comp_x = velocity_x_lp;
+					flow_comp_y = velocity_y_lp;
 				}
 				else
 				{
 					if(valid_frame_count>0)
 					{
-						flow_comp_m_x = velocity_x_sum/valid_frame_count;
-						flow_comp_m_y = velocity_y_sum/valid_frame_count;
+						flow_comp_m_x = velocity_x_meter_sum/valid_frame_count;
+						flow_comp_m_y = velocity_y_meter_sum/valid_frame_count;
+						flow_comp_x = velocity_x_sum/valid_frame_count;
+						flow_comp_y = velocity_y_sum/valid_frame_count;
 					}
 					else
 					{
 						flow_comp_m_x = 0.0f;
 						flow_comp_m_y = 0.0f;
+						flow_comp_x = 0.0f;
+						flow_comp_y = 0.0f;
 					}
 				}
 
 
 				// send flow
 				mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
-						pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
+						pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, flow_comp_x, flow_comp_y,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
 				mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
@@ -561,7 +586,7 @@ int main(void)
 				if (global_data.param[PARAM_USB_SEND_FLOW])
 				{
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
-							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
+							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, flow_comp_x, flow_comp_y,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
 
@@ -587,6 +612,8 @@ int main(void)
 				accumulated_gyro_y = 0;
 				accumulated_gyro_z = 0;
 
+				velocity_x_meter_sum = 0.0f;
+				velocity_y_meter_sum = 0.0f;
 				velocity_x_sum = 0.0f;
 				velocity_y_sum = 0.0f;
 				pixel_flow_x_sum = 0.0f;
